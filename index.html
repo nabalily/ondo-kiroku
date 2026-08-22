@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <base target="_top">
+  <title>麗鹿 温度記録</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      background: #f4f0ea;
+      color: #2d2d2d;
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+
+    .hero {
+      background: linear-gradient(160deg, #2f5d6e, #22434f);
+      color: white;
+      padding: 26px 20px 22px;
+      text-align: center;
+    }
+    .hero-app-name { font-size: 15px; font-weight: 600; opacity: 0.9; margin-bottom: 14px; }
+    .hero-stats { display: flex; justify-content: center; gap: 30px; align-items: flex-end; }
+    .hero-num { font-size: 38px; font-weight: 800; line-height: 1; }
+    .hero-unit { font-size: 15px; font-weight: 400; margin-left: 3px; }
+    .hero-cap { font-size: 11px; opacity: 0.7; margin-top: 6px; }
+    .hero-sub { font-size: 12px; opacity: 0.75; margin-top: 12px; }
+    .hero-num.ng { color: #ffb3b3; }
+
+    .tabs {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      background: #22434f; position: sticky; top: 0; z-index: 50;
+    }
+    .tab {
+      padding: 13px 4px; text-align: center; font-size: 14px; font-weight: 700;
+      color: rgba(255,255,255,0.55); cursor: pointer;
+      -webkit-tap-highlight-color: transparent; border-bottom: 3px solid transparent;
+    }
+    .tab.on { color: white; border-bottom-color: #c9a227; }
+
+    .page { display: none; }
+    .page.on { display: block; }
+
+    .card {
+      background: white; border-radius: 18px; margin: 16px; padding: 20px 18px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    }
+    .card-title { font-size: 12px; font-weight: 600; color: #999; letter-spacing: 0.06em; margin-bottom: 14px; }
+
+    .field { margin-bottom: 14px; }
+    .field-label { font-size: 13px; color: #666; font-weight: 500; margin-bottom: 6px; display: block; }
+
+    .inp {
+      width: 100%; padding: 13px 12px; border: 2px solid #e8e8e8; border-radius: 12px;
+      font-size: 15px; color: #2d2d2d; background: white; outline: none;
+      -webkit-appearance: none; appearance: none; font-family: inherit;
+    }
+    .inp:focus { border-color: #2f5d6e; }
+    select.inp { padding-right: 30px; }
+
+    .chips { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+    .chip {
+      padding: 13px 4px; border: 2px solid #e8e8e8; border-radius: 12px; background: white;
+      font-size: 15px; font-weight: 700; color: #bbb; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; font-family: inherit;
+    }
+    .chip.on { border-color: #2f5d6e; background: #eaf1f3; color: #2f5d6e; }
+
+    .ko {
+      border: 2px solid #eee; border-radius: 14px; padding: 14px; margin-bottom: 12px;
+      transition: border-color .15s, background .15s;
+    }
+    .ko.ng { border-color: #d9534f; background: #fdf3f3; }
+    .ko.okv { border-color: #cfe0d2; background: #f6faf6; }
+    .ko-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .ko-name { font-size: 16px; font-weight: 800; }
+    .ko-use { font-size: 11px; color: #999; margin-left: 6px; font-weight: 400; }
+    .ko-rule { font-size: 12px; color: #2f5d6e; font-weight: 700; white-space: nowrap; }
+    .ko-row { display: flex; align-items: center; gap: 8px; }
+    .ko-temp {
+      flex: 1; min-width: 0; padding: 12px; border: 2px solid #e8e8e8; border-radius: 12px;
+      font-size: 26px; font-weight: 800; text-align: right; outline: none;
+      -webkit-appearance: none; font-family: inherit; color: #2d2d2d;
+    }
+    .ko-temp:focus { border-color: #2f5d6e; }
+    .ko.ng .ko-temp { border-color: #d9534f; color: #c0392b; }
+    .ko-unit { font-size: 15px; color: #666; font-weight: 700; }
+    .ko-done { font-size: 11px; color: #6a9a6f; margin-top: 6px; font-weight: 600; }
+    .ko-warn { font-size: 12px; color: #c0392b; font-weight: 700; margin-top: 8px; display: none; }
+    .ko.ng .ko-warn { display: block; }
+    .ko-memo { margin-top: 8px; display: none; }
+    .ko.ng .ko-memo { display: block; }
+
+    .submit-btn {
+      width: 100%; padding: 17px; background: #2f5d6e; color: white; border: none;
+      border-radius: 14px; font-size: 18px; font-weight: 800; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; letter-spacing: 0.04em; font-family: inherit;
+    }
+    .submit-btn:disabled { background: #ccc; }
+    .sub-btn {
+      width: 100%; padding: 14px; background: white; color: #2f5d6e; border: 2px solid #2f5d6e;
+      border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .sub-btn:disabled { border-color: #ddd; color: #ccc; }
+    .txt-btn {
+      padding: 10px 14px; border: 2px solid #e8e8e8; border-radius: 12px; background: white;
+      font-size: 13px; color: #888; cursor: pointer; font-weight: 600; font-family: inherit;
+    }
+
+    .list { list-style: none; }
+    .item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid #f0f0f0; cursor: pointer;
+    }
+    .item:last-child { border-bottom: none; }
+    .i-date { font-size: 11px; color: #bbb; }
+    .i-ko { font-size: 15px; font-weight: 700; }
+    .i-temp { font-size: 14px; color: #555; text-align: right; }
+    .i-judge { font-size: 18px; font-weight: 800; margin-left: 10px; }
+    .i-judge.ok { color: #6a9a6f; }
+    .i-judge.ng { color: #d9534f; }
+
+    table.sum { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.sum th { text-align: right; font-size: 11px; color: #999; font-weight: 600; padding: 8px 4px; border-bottom: 2px solid #eee; }
+    table.sum th:first-child { text-align: left; }
+    table.sum td { padding: 11px 4px; border-bottom: 1px solid #f2f2f2; text-align: right; }
+    table.sum td:first-child { text-align: left; font-weight: 700; font-size: 14px; }
+    td.ngnum { color: #d9534f; font-weight: 800; }
+
+    .overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 200; align-items: center; justify-content: center; padding: 16px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: white; border-radius: 20px; padding: 24px 20px;
+      width: 100%; max-width: 380px; max-height: 88vh; overflow-y: auto;
+    }
+    .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+    .modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+    .btn-cancel {
+      padding: 14px; border: 2px solid #e8e8e8; border-radius: 12px; background: white;
+      font-size: 15px; font-weight: 600; color: #888; cursor: pointer; font-family: inherit;
+    }
+    .btn-ok {
+      padding: 14px; border: none; border-radius: 12px; background: #2f5d6e;
+      font-size: 15px; font-weight: 700; color: white; cursor: pointer; font-family: inherit;
+    }
+    .btn-danger {
+      width: 100%; padding: 13px; margin-top: 12px; border: none; border-radius: 12px;
+      background: #fff0f0; color: #d9534f; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .manage-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+    .hide-btn { padding: 7px 14px; border: none; border-radius: 8px; background: #f5f5f5; color: #888; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+
+    .ask-msg { font-size: 14px; line-height: 1.8; color: #555; margin-bottom: 18px; white-space: pre-wrap; }
+
+    .toast {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(140px);
+      background: #2d2d2d; color: white; padding: 13px 26px; border-radius: 100px;
+      font-size: 14px; font-weight: 600; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 300; pointer-events: none; max-width: 90vw; text-align: center;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.bad { background: #c0392b; }
+
+    .msg { color: #ccc; font-size: 13px; text-align: center; padding: 20px; }
+    .note { font-size: 11px; color: #aaa; margin-top: 10px; line-height: 1.6; }
+    .link { color: #2f5d6e; font-weight: 700; text-decoration: none; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-app-name">耶馬渓ジビエ 麗鹿　温度記録</div>
+    <div class="hero-stats">
+      <div>
+        <span class="hero-num" id="statDone">--</span><span class="hero-unit">件</span>
+        <div class="hero-cap">今月の記録</div>
+      </div>
+      <div>
+        <span class="hero-num ng" id="statNg">--</span><span class="hero-unit">件</span>
+        <div class="hero-cap">基準外</div>
+      </div>
+    </div>
+    <div class="hero-sub" id="heroSub">読み込み中...</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" data-page="pageInput" onclick="switchTab(this)">記録</div>
+    <div class="tab" data-page="pageHistory" onclick="switchTab(this)">履歴</div>
+    <div class="tab" data-page="pageMonth" onclick="switchTab(this)">月次・記録表</div>
+  </div>
+
+  <div class="page on" id="pageInput">
+    <div class="card">
+      <div class="card-title">庫内温度を記録する</div>
+
+      <div class="field">
+        <span class="field-label">日付</span>
+        <input type="date" class="inp" id="fDate" onchange="loadData()">
+      </div>
+
+      <div class="field">
+        <span class="field-label">時点</span>
+        <div class="chips" id="timingChips"></div>
+      </div>
+
+      <div id="koArea"><div class="msg">読み込み中...</div></div>
+
+      <div class="field" style="margin-top:14px;">
+        <span class="field-label">確認者</span>
+        <input type="text" class="inp" id="fChecker" placeholder="江渕">
+      </div>
+
+      <button class="submit-btn" id="btnSubmit" onclick="submitAll()" disabled>記録する</button>
+
+      <div style="margin-top:14px; display:flex; gap:8px;">
+        <button class="txt-btn" style="flex:1" onclick="openAddKo()">＋ 庫を追加</button>
+        <button class="txt-btn" style="flex:1" onclick="openManageKo()">庫を管理</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="pageHistory">
+    <div class="card">
+      <div class="card-title">最近の記録（タップで修正）</div>
+      <ul class="list" id="historyList"><li class="msg">読み込み中...</li></ul>
+    </div>
+  </div>
+
+  <div class="page" id="pageMonth">
+    <div class="card">
+      <div class="card-title">月を選ぶ</div>
+      <select class="inp" id="fMonth" onchange="loadMonthly()"></select>
+    </div>
+    <div class="card">
+      <div class="card-title">庫ごとの記録状況</div>
+      <div id="monthlyArea"><div class="msg">月を選んでください</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">基準を外れた記録</div>
+      <div id="ngArea"><div class="msg">-</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">月次記録表をつくる</div>
+      <button class="sub-btn" id="btnMakeSheet" onclick="makeSheet()" disabled>この月の記録表を作る</button>
+      <div id="madeBox" style="display:none; margin-top:14px; padding:14px; background:#eaf1f3; border-radius:12px;"></div>
+      <div class="note">
+        1日1行・庫ごとに始業と終業が並ぶ、A4横1枚の記録表を作ります。<br>
+        基準を外れた数値は赤で表示されます。パソコンで「ファイル &gt; 印刷」からPDF保存できます。
+      </div>
+      <div style="margin-top:12px;">
+        <a class="link" id="ssLink" href="#" target="_blank" rel="noopener">スプレッドシートを開く →</a>
+      </div>
+    </div>
+    <div style="text-align:center; padding:8px 16px 24px;">
+      <button class="txt-btn" style="border:none; background:none; color:#aaa; font-size:12px;"
+              onclick="openUrlSetup(false)">接続先の設定を変更する</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovSetup">
+    <div class="modal">
+      <h3 id="setupTitle">最初に1回だけ設定します</h3>
+      <div class="ask-msg">Apps Script の URL を貼り付けてください。
+
+このURLは、この端末の中だけに保存されます。次回からは自動で読み込まれるので、入力するのは今回だけです。</div>
+      <input type="text" class="inp" id="setupInput"
+             placeholder="https://script.google.com/macros/s/.../exec"
+             autocomplete="off" autocapitalize="off" spellcheck="false" style="font-size:13px; margin-bottom:10px;">
+      <div id="setupErr" style="display:none; font-size:13px; color:#d9534f; font-weight:600; margin-bottom:12px; white-space:pre-wrap;"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" id="setupCancel" onclick="closeOv('ovSetup')">キャンセル</button>
+        <button class="btn-ok" onclick="saveSetupUrl()">保存する</button>
+      </div>
+      <div class="note">
+        Apps Script の「デプロイ」→「デプロイを管理」→<b>ウェブアプリ</b>の下の「コピー」で取れます。
+        <b>デプロイID や ライブラリURL ではありません。</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovAddKo">
+    <div class="modal">
+      <h3 id="addKoTitle">庫を追加する</h3>
+      <div class="field">
+        <span class="field-label">庫の名前</span>
+        <input type="text" class="inp" id="koName" placeholder="例：冷凍庫1" maxlength="30">
+      </div>
+      <div class="field">
+        <span class="field-label">用途</span>
+        <input type="text" class="inp" id="koUse" placeholder="例：ペット用原料" maxlength="40">
+      </div>
+      <div class="field">
+        <span class="field-label">基準（よく使うものから選べます）</span>
+        <select class="inp" id="koPreset" onchange="applyPreset()">
+          <option value="">選んでください</option>
+          <option value="-18">冷凍　-18℃以下</option>
+          <option value="-15">冷凍　-15℃以下</option>
+          <option value="10">冷蔵　10℃以下</option>
+          <option value="0,10">冷蔵　0〜10℃</option>
+          <option value="free">自分で入力する</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="field">
+          <span class="field-label">基準の下限（℃）</span>
+          <input type="number" class="inp" id="koLo" step="0.1" inputmode="decimal" placeholder="空欄可">
+        </div>
+        <div class="field">
+          <span class="field-label">基準の上限（℃）</span>
+          <input type="number" class="inp" id="koHi" step="0.1" inputmode="decimal" placeholder="空欄可">
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">設定温度（℃）</span>
+        <input type="number" class="inp" id="koSet" step="0.1" inputmode="decimal" placeholder="例：-20">
+      </div>
+      <div id="addKoErr" style="display:none; font-size:13px; color:#d9534f; font-weight:600; margin-bottom:12px;"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeOv('ovAddKo')">キャンセル</button>
+        <button class="btn-ok" onclick="saveKo()">保存する</button>
+      </div>
+      <div class="note">
+        「下限」を空欄にすると「◯℃以下」、「上限」を空欄にすると「◯℃以上」が基準になります。
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovManageKo">
+    <div class="modal">
+      <h3>庫を管理する</h3>
+      <ul class="list" id="manageKoList" style="margin-bottom:12px;"></ul>
+      <div class="note" style="margin-bottom:14px;">
+        タップすると設定を変更できます。「非表示」にすると記録画面から消えますが、過去の記録は残ります。
+      </div>
+      <button class="btn-cancel" style="width:100%" onclick="closeOv('ovManageKo')">閉じる</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovEdit">
+    <div class="modal">
+      <h3>記録を修正する</h3>
+      <input type="hidden" id="eMonth">
+      <input type="hidden" id="eRow">
+      <input type="hidden" id="eKo">
+      <div class="ask-msg" id="eHead"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="field">
+          <span class="field-label">始業時（℃）</span>
+          <input type="number" class="inp" id="eStart" step="0.1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <span class="field-label">終業時（℃）</span>
+          <input type="number" class="inp" id="eEnd" step="0.1" inputmode="decimal">
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">異常時の対応</span>
+        <input type="text" class="inp" id="eMemo" maxlength="200">
+      </div>
+      <div class="field">
+        <span class="field-label">確認者</span>
+        <input type="text" class="inp" id="eChecker" maxlength="30">
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeOv('ovEdit')">キャンセル</button>
+        <button class="btn-ok" onclick="saveEdit()">保存する</button>
+      </div>
+      <button class="btn-danger" onclick="deleteRecord()">この記録を取り消す</button>
+      <div class="note">取り消した記録はスプレッドシートの「削除ログ」シートに残ります。</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovAsk">
+    <div class="modal">
+      <h3 id="askTitle">確認</h3>
+      <div class="ask-msg" id="askMsg"></div>
+      <input type="text" class="inp" id="askInput" style="display:none; margin-bottom:16px;">
+      <div class="modal-btns">
+        <button class="btn-cancel" id="askNo">キャンセル</button>
+        <button class="btn-ok" id="askYes">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /* Apps ScriptのURLはこのファイルの中には書きません（GitHub Pagesは公開の場所のため） */
+    /*__GAS_URL__*/
+
+    var URL_KEY = 'reika_ondo_gas_url';
+
+    function savedUrl() {
+      try { return localStorage.getItem(URL_KEY) || ''; } catch (e) { return ''; }
+    }
+
+    var SCRIPT_URL = (typeof window.__GAS_URL__ === 'string' && window.__GAS_URL__) || savedUrl();
+
+    var kos = [];
+    var records = [];
+    var todayStatus = {};
+    var defaultChecker = '';
+    var ssUrl = '';
+    var timing = '始業';
+    var currentMonthly = null;
+    var busy = false;
+    var editingKo = null;
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function showToast(msg, bad) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (bad ? ' bad' : '');
+      setTimeout(function () { t.className = 'toast' + (bad ? ' bad' : ''); }, 3200);
+    }
+
+    function closeOv(id) { document.getElementById(id).classList.remove('open'); }
+
+    function switchTab(el) {
+      var t = document.querySelectorAll('.tab'), p = document.querySelectorAll('.page');
+      for (var i = 0; i < t.length; i++) t[i].classList.remove('on');
+      for (var j = 0; j < p.length; j++) p[j].classList.remove('on');
+      el.classList.add('on');
+      document.getElementById(el.dataset.page).classList.add('on');
+      window.scrollTo(0, 0);
+    }
+
+    // ---------- 確認ダイアログ（自作） ----------
+    var askDone = null;
+
+    function openAsk(o) {
+      return new Promise(function (resolve) {
+        askDone = resolve;
+        document.getElementById('askTitle').textContent = o.title || '確認';
+        document.getElementById('askMsg').textContent = o.message || '';
+        var inp = document.getElementById('askInput');
+        if (o.input) { inp.style.display = 'block'; inp.value = o.defaultValue || ''; }
+        else { inp.style.display = 'none'; }
+        document.getElementById('askYes').textContent = o.okLabel || 'OK';
+        document.getElementById('ovAsk').classList.add('open');
+      });
+    }
+    function finishAsk(v) {
+      closeOv('ovAsk');
+      var r = askDone; askDone = null;
+      if (r) r(v);
+    }
+    function askConfirm(msg, ok, title) { return openAsk({ message: msg, okLabel: ok, title: title }); }
+    function askText(msg, def, title) { return openAsk({ message: msg, input: true, defaultValue: def, title: title }); }
+
+    document.getElementById('askYes').onclick = function () {
+      var inp = document.getElementById('askInput');
+      finishAsk(inp.style.display === 'none' ? true : inp.value);
+    };
+    document.getElementById('askNo').onclick = function () {
+      var inp = document.getElementById('askInput');
+      finishAsk(inp.style.display === 'none' ? false : null);
+    };
+
+    // ---------- 接続先の設定 ----------
+    function isValidGasUrl(u) {
+      return /^https:\/\/script\.google\.com\/macros\/s\/[^\/\s]+\/exec$/.test(u);
+    }
+
+    function openUrlSetup(first) {
+      document.getElementById('setupInput').value = first ? '' : savedUrl();
+      document.getElementById('setupErr').style.display = 'none';
+      document.getElementById('setupCancel').style.display = first ? 'none' : 'block';
+      document.getElementById('setupTitle').textContent = first ? '最初に1回だけ設定します' : '接続先を変更する';
+      document.getElementById('ovSetup').classList.add('open');
+    }
+
+    function setupError(m) {
+      var e = document.getElementById('setupErr');
+      e.textContent = m; e.style.display = 'block';
+    }
+
+    async function saveSetupUrl() {
+      var u = document.getElementById('setupInput').value.trim();
+      if (!u) { setupError('URLを貼り付けてください'); return; }
+      if (!isValidGasUrl(u)) {
+        if (u.indexOf('/macros/library/') >= 0) setupError('これは「ライブラリURL」です。「ウェブアプリ」の下のURLをコピーしてください。');
+        else if (u.indexOf('script.google.com') < 0) setupError('Apps Script のURLではないようです。https://script.google.com/macros/s/... で始まります。');
+        else if (!/\/exec$/.test(u)) setupError('URLの最後が /exec になっていません。末尾まで全部コピーできているか確認してください。');
+        else setupError('URLの形が正しくありません。もう一度コピーし直してください。');
+        return;
+      }
+      setupError('確認中...');
+      try {
+        var res = await fetch(u + '?action=read');
+        var d = await res.json();
+        if (!d.ok) throw new Error(d.error || '応答が正しくありません');
+        try { localStorage.setItem(URL_KEY, u); } catch (e) {}
+        SCRIPT_URL = u;
+        closeOv('ovSetup');
+        showToast('✓ 接続しました');
+        await loadData();
+      } catch (e) {
+        setupError('つながりませんでした：' + e.message + '\nApps Scriptの「アクセスできるユーザー＝全員」も確認してください。');
+      }
+    }
+
+    // ---------- 通信 ----------
+    async function api(params) {
+      if (!SCRIPT_URL) throw new Error('接続先が設定されていません');
+      var res = await fetch(SCRIPT_URL + '?' + new URLSearchParams(params).toString());
+      var d = await res.json();
+      if (!d.ok) throw new Error(d.error || '不明なエラー');
+      return d;
+    }
+
+    // ---------- データ読み込み ----------
+    async function loadData() {
+      try {
+        var d = await api({ action: 'read' });
+        kos = d.kos || [];
+        records = d.records || [];
+        todayStatus = d.todayStatus || {};
+        defaultChecker = d.defaultChecker || '';
+        ssUrl = d.ssUrl || '';
+        document.getElementById('ssLink').href = ssUrl;
+
+        var mk = d.thisMonth.split('-');
+        document.getElementById('statDone').textContent = d.summary.total;
+        document.getElementById('statNg').textContent = d.summary.ng;
+        document.getElementById('heroSub').textContent =
+          mk[0] + '年' + Number(mk[1]) + '月　'
+          + (d.summary.ng > 0 ? '基準を外れた記録があります' : '基準内で記録できています');
+
+        var ch = document.getElementById('fChecker');
+        if (!ch.value) ch.value = defaultChecker;
+
+        var ms = document.getElementById('fMonth');
+        var keep = ms.value;
+        ms.innerHTML = '';
+        (d.months || []).forEach(function (m) {
+          var o = document.createElement('option');
+          var p = m.split('-');
+          o.value = m; o.textContent = p[0] + '年' + Number(p[1]) + '月';
+          ms.appendChild(o);
+        });
+        if (keep && (d.months || []).indexOf(keep) >= 0) ms.value = keep;
+
+        renderKos();
+        renderHistory();
+      } catch (e) {
+        document.getElementById('heroSub').textContent = 'データを取得できませんでした';
+        document.getElementById('koArea').innerHTML = '<div class="msg">読み込みに失敗しました<br>' + esc(e.message) + '</div>';
+      }
+    }
+
+    // ---------- 庫ごとの入力欄を描く ----------
+    function renderKos() {
+      var area = document.getElementById('koArea');
+      if (kos.length === 0) {
+        area.innerHTML = '<div class="msg">まず「＋ 庫を追加」から<br>冷蔵庫・冷凍庫を登録してください</div>';
+        document.getElementById('btnSubmit').disabled = true;
+        return;
+      }
+      var isToday = document.getElementById('fDate').value === todayISO();
+      var html = '';
+      kos.forEach(function (k, i) {
+        var st = isToday ? (todayStatus[k.name] || {}) : {};
+        var doneTxt = '';
+        if (st.start !== null && st.start !== undefined) doneTxt += '始業 ' + st.start.toFixed(1) + '℃ 記録済み';
+        if (st.end !== null && st.end !== undefined) doneTxt += (doneTxt ? '　/　' : '') + '終業 ' + st.end.toFixed(1) + '℃ 記録済み';
+
+        html += '<div class="ko" id="ko' + i + '">'
+              + '<div class="ko-head">'
+              +   '<div><span class="ko-name">' + esc(k.name) + '</span>'
+              +   (k.use ? '<span class="ko-use">' + esc(k.use) + '</span>' : '') + '</div>'
+              +   '<div class="ko-rule">' + esc(k.rule || '基準なし') + '</div>'
+              + '</div>'
+              + '<div class="ko-row">'
+              +   '<input type="number" class="ko-temp" id="t' + i + '" step="0.1" inputmode="decimal" '
+              +   'placeholder="' + (k.setTemp === '' ? '0.0' : k.setTemp) + '" oninput="checkKo(' + i + ')">'
+              +   '<span class="ko-unit">℃</span>'
+              + '</div>'
+              + '<div class="ko-warn">基準を外れています。下に対応を書いてください</div>'
+              + '<input type="text" class="inp ko-memo" id="m' + i + '" placeholder="とった対応（例：扉の閉め直し・再測定）" maxlength="120" oninput="updateSubmit()">'
+              + (doneTxt ? '<div class="ko-done">' + doneTxt + '</div>' : '')
+              + '</div>';
+      });
+      area.innerHTML = html;
+      updateSubmit();
+    }
+
+    function todayISO() {
+      var t = new Date();
+      return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
+    }
+
+    function checkKo(i) {
+      var k = kos[i];
+      var el = document.getElementById('ko' + i);
+      var v = document.getElementById('t' + i).value;
+      el.classList.remove('ng', 'okv');
+      if (v !== '') {
+        var t = parseFloat(v);
+        var ng = (k.lo !== '' && t < k.lo) || (k.hi !== '' && t > k.hi);
+        el.classList.add(ng ? 'ng' : 'okv');
+      }
+      updateSubmit();
+    }
+
+    function updateSubmit() {
+      var n = 0, blocked = false;
+      kos.forEach(function (k, i) {
+        var v = document.getElementById('t' + i);
+        if (!v || v.value === '') return;
+        n++;
+        var el = document.getElementById('ko' + i);
+        if (el.classList.contains('ng') && document.getElementById('m' + i).value.trim() === '') blocked = true;
+      });
+      var b = document.getElementById('btnSubmit');
+      b.disabled = (n === 0 || blocked);
+      b.textContent = blocked ? '対応を書いてください' : (n === 0 ? '温度を入力してください' : n + '件を記録する');
+    }
+
+    // ---------- 記録する ----------
+    async function submitAll() {
+      if (busy) return;
+      var entries = [];
+      var ngCount = 0;
+      kos.forEach(function (k, i) {
+        var v = document.getElementById('t' + i).value;
+        if (v === '') return;
+        var memo = document.getElementById('m' + i).value.trim();
+        if (document.getElementById('ko' + i).classList.contains('ng')) ngCount++;
+        entries.push({ ko: k.name, t: parseFloat(v), memo: memo });
+      });
+      if (entries.length === 0) return;
+
+      busy = true;
+      var b = document.getElementById('btnSubmit');
+      b.disabled = true; b.textContent = '送信中...';
+
+      try {
+        await api({
+          action: 'write',
+          date: document.getElementById('fDate').value,
+          timing: timing,
+          checker: document.getElementById('fChecker').value.trim(),
+          entries: JSON.stringify(entries)
+        });
+        if (ngCount > 0) {
+          showToast('記録しました（基準外 ' + ngCount + '件）', true);
+        } else {
+          showToast('✓ ' + timing + ' ' + entries.length + '件を記録しました');
+        }
+        kos.forEach(function (k, i) {
+          document.getElementById('t' + i).value = '';
+          document.getElementById('m' + i).value = '';
+          document.getElementById('ko' + i).classList.remove('ng', 'okv');
+        });
+        await loadData();
+      } catch (e) {
+        showToast('エラー: ' + e.message, true);
+      }
+      busy = false;
+      updateSubmit();
+    }
+
+    // ---------- 履歴 ----------
+    function renderHistory() {
+      var list = document.getElementById('historyList');
+      if (records.length === 0) {
+        list.innerHTML = '<li class="msg">まだ記録がありません</li>';
+        return;
+      }
+      list.innerHTML = '';
+      records.forEach(function (r) {
+        var li = document.createElement('li');
+        li.className = 'item' + (r.judge === '×' ? ' ng' : '');
+        var dp = r.date.split('-');
+        var temps = [];
+        if (r.start !== '') temps.push('始 ' + Number(r.start).toFixed(1));
+        if (r.end !== '') temps.push('終 ' + Number(r.end).toFixed(1));
+        li.innerHTML =
+          '<div><div class="i-date">' + Number(dp[1]) + '/' + Number(dp[2]) + '（' + esc(r.youbi) + '）</div>'
+          + '<div class="i-ko">' + esc(r.ko) + '</div></div>'
+          + '<div style="display:flex; align-items:center;">'
+          +   '<div class="i-temp">' + (temps.join('　') || '未記録') + '℃'
+          +   '<div style="font-size:11px; color:#aaa;">' + esc(r.rule) + '</div></div>'
+          +   '<div class="i-judge ' + (r.judge === '×' ? 'ng' : 'ok') + '">' + (r.judge || '-') + '</div>'
+          + '</div>';
+        li.onclick = function () { openEdit(r); };
+        list.appendChild(li);
+      });
+    }
+
+    function openEdit(r) {
+      document.getElementById('eMonth').value = r.month;
+      document.getElementById('eRow').value = r.row;
+      document.getElementById('eKo').value = r.ko;
+      document.getElementById('eHead').textContent = r.date + '（' + r.youbi + '）　' + r.ko + '　基準：' + (r.rule || 'なし');
+      document.getElementById('eStart').value = r.start === '' ? '' : r.start;
+      document.getElementById('eEnd').value = r.end === '' ? '' : r.end;
+      document.getElementById('eMemo').value = r.memo;
+      document.getElementById('eChecker').value = r.checker;
+      document.getElementById('ovEdit').classList.add('open');
+    }
+
+    async function saveEdit() {
+      try {
+        await api({
+          action: 'update',
+          month: document.getElementById('eMonth').value,
+          row: document.getElementById('eRow').value,
+          ko: document.getElementById('eKo').value,
+          start: document.getElementById('eStart').value,
+          end: document.getElementById('eEnd').value,
+          memo: document.getElementById('eMemo').value,
+          checker: document.getElementById('eChecker').value
+        });
+        closeOv('ovEdit');
+        showToast('✓ 修正しました');
+        await loadData();
+        if (currentMonthly) loadMonthly();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+    }
+
+    async function deleteRecord() {
+      var ok = await askConfirm('この記録を取り消します。\n\n月のシートからは消えますが、「削除ログ」シートに控えが残ります。', '取り消す', '記録を取り消す');
+      if (!ok) return;
+      var reason = await askText('取り消しの理由（空欄でもOK）', '', '取り消しの理由');
+      if (reason === null) return;
+      try {
+        await api({
+          action: 'delete',
+          month: document.getElementById('eMonth').value,
+          row: document.getElementById('eRow').value,
+          reason: reason
+        });
+        closeOv('ovEdit');
+        showToast('記録を取り消しました（削除ログに移動）');
+        await loadData();
+        if (currentMonthly) loadMonthly();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+    }
+
+    // ---------- 庫の追加・管理 ----------
+    function openAddKo(ko) {
+      editingKo = ko || null;
+      document.getElementById('addKoTitle').textContent = ko ? '庫の設定を変更する' : '庫を追加する';
+      document.getElementById('koName').value = ko ? ko.name : '';
+      document.getElementById('koName').readOnly = !!ko;
+      document.getElementById('koUse').value = ko ? ko.use : '';
+      document.getElementById('koLo').value = ko && ko.lo !== '' ? ko.lo : '';
+      document.getElementById('koHi').value = ko && ko.hi !== '' ? ko.hi : '';
+      document.getElementById('koSet').value = ko && ko.setTemp !== '' ? ko.setTemp : '';
+      document.getElementById('koPreset').value = '';
+      document.getElementById('addKoErr').style.display = 'none';
+      closeOv('ovManageKo');
+      document.getElementById('ovAddKo').classList.add('open');
+    }
+
+    function applyPreset() {
+      var v = document.getElementById('koPreset').value;
+      if (v === '' || v === 'free') return;
+      var p = v.split(',');
+      if (p.length === 2) {
+        document.getElementById('koLo').value = p[0];
+        document.getElementById('koHi').value = p[1];
+        if (!document.getElementById('koSet').value) document.getElementById('koSet').value = 4;
+      } else {
+        document.getElementById('koLo').value = '';
+        document.getElementById('koHi').value = p[0];
+        if (!document.getElementById('koSet').value) document.getElementById('koSet').value = Number(p[0]) - 2;
+      }
+    }
+
+    async function saveKo() {
+      var name = document.getElementById('koName').value.trim();
+      var lo = document.getElementById('koLo').value;
+      var hi = document.getElementById('koHi').value;
+      var err = document.getElementById('addKoErr');
+      err.style.display = 'none';
+
+      if (!name) { err.textContent = '庫の名前を入れてください'; err.style.display = 'block'; return; }
+      if (lo === '' && hi === '') { err.textContent = '基準の下限か上限、どちらかは入れてください'; err.style.display = 'block'; return; }
+      if (lo !== '' && hi !== '' && Number(lo) > Number(hi)) {
+        err.textContent = '下限が上限より大きくなっています'; err.style.display = 'block'; return;
+      }
+      try {
+        await api({
+          action: 'addKo', ko: name,
+          use: document.getElementById('koUse').value.trim(),
+          lo: lo, hi: hi,
+          setTemp: document.getElementById('koSet').value,
+          order: editingKo ? editingKo.order : (kos.length + 1)
+        });
+        closeOv('ovAddKo');
+        showToast('「' + name + '」を保存しました');
+        await loadData();
+      } catch (e) {
+        err.textContent = 'エラー: ' + e.message; err.style.display = 'block';
+      }
+    }
+
+    function openManageKo() {
+      var list = document.getElementById('manageKoList');
+      if (kos.length === 0) {
+        list.innerHTML = '<li class="msg">庫が登録されていません</li>';
+      } else {
+        list.innerHTML = '';
+        kos.forEach(function (k) {
+          var li = document.createElement('li');
+          li.className = 'manage-item';
+          var left = document.createElement('div');
+          left.style.cursor = 'pointer';
+          left.innerHTML = '<div style="font-size:15px; font-weight:700;">' + esc(k.name) + '</div>'
+                         + '<div style="font-size:11px; color:#999;">' + esc(k.use) + '　' + esc(k.rule) + '</div>';
+          left.onclick = function () { openAddKo(k); };
+          var b = document.createElement('button');
+          b.className = 'hide-btn'; b.textContent = '非表示'; b.type = 'button';
+          b.onclick = function () { hideKo(k.name); };
+          li.appendChild(left); li.appendChild(b);
+          list.appendChild(li);
+        });
+      }
+      document.getElementById('ovManageKo').classList.add('open');
+    }
+
+    async function hideKo(name) {
+      var ok = await askConfirm('「' + name + '」を記録画面から非表示にします。\n\n過去の記録はそのまま残ります。', '非表示にする', '庫を非表示にする');
+      if (!ok) return;
+      try {
+        await api({ action: 'hideKo', ko: name });
+        closeOv('ovManageKo');
+        showToast('「' + name + '」を非表示にしました');
+        await loadData();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+    }
+
+    // ---------- 月次 ----------
+    async function loadMonthly() {
+      var month = document.getElementById('fMonth').value;
+      if (!month) return;
+      var area = document.getElementById('monthlyArea');
+      var ngArea = document.getElementById('ngArea');
+      area.innerHTML = '<div class="msg">読み込み中...</div>';
+      document.getElementById('madeBox').style.display = 'none';
+
+      try {
+        var d = await api({ action: 'monthly', month: month });
+        currentMonthly = d;
+        document.getElementById('btnMakeSheet').disabled = (d.total.rows === 0);
+
+        if (d.byKo.length === 0) {
+          area.innerHTML = '<div class="msg">この月の記録はありません</div>';
+          ngArea.innerHTML = '<div class="msg">-</div>';
+          return;
+        }
+
+        var h = '<table class="sum"><thead><tr><th>庫</th><th>記録日数</th><th>未記入</th><th>基準外</th></tr></thead><tbody>';
+        d.byKo.forEach(function (x) {
+          h += '<tr><td>' + esc(x.ko) + '</td><td>' + x.days + '日</td>'
+             + '<td>' + (x.missing > 0 ? x.missing + '件' : '-') + '</td>'
+             + '<td class="' + (x.ng > 0 ? 'ngnum' : '') + '">' + (x.ng > 0 ? x.ng + '件' : '0') + '</td></tr>';
+        });
+        h += '</tbody></table>';
+        area.innerHTML = h;
+
+        if (d.ngRows.length === 0) {
+          ngArea.innerHTML = '<div class="msg">基準を外れた記録はありません</div>';
+        } else {
+          var n = '<ul class="list">';
+          d.ngRows.forEach(function (r) {
+            var dp = r.date.split('-');
+            var temps = [];
+            if (r.start !== '') temps.push('始 ' + Number(r.start).toFixed(1));
+            if (r.end !== '') temps.push('終 ' + Number(r.end).toFixed(1));
+            n += '<li class="item" style="cursor:default;">'
+               + '<div><div class="i-date">' + Number(dp[1]) + '/' + Number(dp[2]) + '</div>'
+               + '<div class="i-ko">' + esc(r.ko) + '</div>'
+               + '<div style="font-size:11px; color:#c0392b;">' + esc(r.memo || '対応の記載なし') + '</div></div>'
+               + '<div class="i-temp">' + temps.join('　') + '℃<div style="font-size:11px; color:#aaa;">' + esc(r.rule) + '</div></div>'
+               + '</li>';
+          });
+          n += '</ul>';
+          ngArea.innerHTML = n;
+        }
+      } catch (e) {
+        area.innerHTML = '<div class="msg">読み込みに失敗しました<br>' + esc(e.message) + '</div>';
+      }
+    }
+
+    async function makeSheet() {
+      var month = document.getElementById('fMonth').value;
+      if (!month) return;
+      var ok = await askConfirm('この月の記録表を作ります。\n\n同じ月の記録表がすでにある場合は、作り直し（上書き）になります。', '作成する', '記録表を作る');
+      if (!ok) return;
+
+      showToast('作成中...');
+      try {
+        var d = await api({ action: 'makeSheet', month: month });
+        var x = d.made[0];
+        showToast('✓ 記録表を作成しました');
+        var url = d.ssUrl + '#gid=' + x.gid;
+        var box = document.getElementById('madeBox');
+        box.style.display = 'block';
+        box.innerHTML = '<div style="font-size:13px; font-weight:700; color:#2f5d6e; margin-bottom:8px;">'
+                      + esc(x.name) + ' を作成しました</div>'
+                      + '<div style="font-size:13px; color:#555; margin-bottom:12px;">'
+                      + '庫 ' + x.kos + '台　記録 ' + x.rows + '件　基準外 ' + x.ng + '件</div>'
+                      + '<a class="link" href="' + url + '" target="_blank" rel="noopener">スプレッドシートで記録表を開く →</a>';
+        try { window.open(url, '_blank'); } catch (e) {}
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+    }
+
+    // ---------- 起動 ----------
+    (function init() {
+      document.getElementById('fDate').value = todayISO();
+
+      var c = document.getElementById('timingChips');
+      var now = new Date();
+      timing = (now.getHours() < 12) ? '始業' : '終業';
+      ['始業', '終業'].forEach(function (name) {
+        var b = document.createElement('button');
+        b.className = 'chip' + (name === timing ? ' on' : '');
+        b.textContent = name + '時';
+        b.type = 'button';
+        b.onclick = function () {
+          var all = c.querySelectorAll('.chip');
+          for (var i = 0; i < all.length; i++) all[i].classList.remove('on');
+          b.classList.add('on');
+          timing = name;
+        };
+        c.appendChild(b);
+      });
+
+      document.getElementById('setupInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') saveSetupUrl();
+      });
+
+      if (!SCRIPT_URL) {
+        document.getElementById('heroSub').textContent = '接続先を設定してください';
+        openUrlSetup(true);
+        return;
+      }
+      loadData();
+    })();
+  </script>
+</body>
+</html>
