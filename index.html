@@ -198,7 +198,12 @@
   </div>
 
   <div class="page on" id="pageInput">
-    <div class="card">
+    <div class="card" style="padding-bottom:16px;">
+      <div class="card-title">何を記録しますか</div>
+      <div class="chips" id="modeChips" style="grid-template-columns:repeat(3,1fr);"></div>
+    </div>
+
+    <div class="card" id="secOndo">
       <div class="card-title">庫内温度を記録する</div>
 
       <div class="field">
@@ -223,6 +228,86 @@
       <div style="margin-top:14px; display:flex; gap:8px;">
         <button class="txt-btn" style="flex:1" onclick="openAddKo()">＋ 庫を追加</button>
         <button class="txt-btn" style="flex:1" onclick="openManageKo()">庫を管理</button>
+      </div>
+    </div>
+
+    <!-- ===== 健康チェック ===== -->
+    <div class="card" id="secKenko" style="display:none;">
+      <div class="card-title">従事者の健康チェック</div>
+
+      <div class="field">
+        <span class="field-label">日付</span>
+        <input type="date" class="inp" id="hDate">
+      </div>
+
+      <div class="field">
+        <span class="field-label">氏名</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select class="inp" id="hName"></select>
+          <button class="txt-btn" onclick="openAddStaff()">＋</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">体温</span>
+        <div class="with-unit">
+          <input type="number" class="inp num" id="hTemp" step="0.1" inputmode="decimal" placeholder="36.5">
+          <span class="unit">℃</span>
+        </div>
+      </div>
+
+      <button class="sub-btn" onclick="allHealthOk()" style="margin-bottom:14px;">すべて異常なし</button>
+
+      <div id="symArea"></div>
+      <div id="wearArea"></div>
+
+      <div class="field" id="hActionField" style="display:none;">
+        <span class="field-label">就業不可のときの対応</span>
+        <input type="text" class="inp" id="hAction" placeholder="例：作業を代わってもらった／受診した" maxlength="200"
+               oninput="updateHealthPreview()">
+      </div>
+
+      <div class="field">
+        <span class="field-label">備考</span>
+        <input type="text" class="inp" id="hMemo" placeholder="（任意）" maxlength="200">
+      </div>
+
+      <div class="preview empty" id="hPreview">氏名を選んでください</div>
+      <button class="submit-btn" id="btnKenko" onclick="submitHealth()" disabled>記録する</button>
+
+      <div class="note">
+        症状がひとつでも「有」だと、就業の可否は自動で「不可」になります。<br>
+        同じ日・同じ人をもう一度記録すると、確認のうえ上書きになります。
+      </div>
+    </div>
+
+    <!-- ===== 日常衛生点検 ===== -->
+    <div class="card" id="secTenken" style="display:none;">
+      <div class="card-title">施設の日常衛生点検</div>
+
+      <div class="field">
+        <span class="field-label">点検日</span>
+        <input type="date" class="inp" id="cDate">
+      </div>
+
+      <button class="sub-btn" onclick="allCheckOk()" style="margin-bottom:14px;">すべて異常なし</button>
+
+      <div id="checkArea"><div class="msg">読み込み中...</div></div>
+
+      <div class="field">
+        <span class="field-label">確認者</span>
+        <input type="text" class="inp" id="cChecker" placeholder="江渕">
+      </div>
+
+      <div class="preview empty" id="cPreview">「すべて異常なし」を押すか、項目をタップしてください</div>
+      <button class="submit-btn" id="btnTenken" onclick="submitCheck()" disabled>記録する</button>
+
+      <div style="margin-top:14px;">
+        <button class="txt-btn" style="width:100%" onclick="openManageCheck()">点検項目を管理する</button>
+      </div>
+      <div class="note">
+        作業場にない設備の項目は「非表示」にできます。<br>
+        異常があった項目は、対応を書かないと保存できません。
       </div>
     </div>
   </div>
@@ -375,6 +460,45 @@
       </div>
       <button class="btn-danger" onclick="deleteRecord()">この記録を取り消す</button>
       <div class="note">取り消した記録はスプレッドシートの「削除ログ」シートに残ります。</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovAddStaff">
+    <div class="modal">
+      <h3>従事者を追加する</h3>
+      <div class="field">
+        <span class="field-label">氏名</span>
+        <input type="text" class="inp" id="staffName" maxlength="40" placeholder="例：山田 花子">
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeOv('ovAddStaff')">キャンセル</button>
+        <button class="btn-ok" onclick="saveStaff()">追加する</button>
+      </div>
+      <ul class="list" id="staffList" style="margin-top:16px;"></ul>
+      <div class="note">タップで非表示にできます。過去の記録は残ります。</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovManageCheck">
+    <div class="modal">
+      <h3>点検項目を管理する</h3>
+      <ul class="list" id="checkMngList" style="margin-bottom:14px;"></ul>
+      <div class="field">
+        <span class="field-label">項目を追加する</span>
+        <input type="text" class="inp" id="newCheckName" maxlength="60" placeholder="項目名">
+      </div>
+      <div class="field">
+        <span class="field-label">答え方</span>
+        <select class="inp" id="newCheckType">
+          <option value="○×">できた／できていない（○×）</option>
+          <option value="無有">異常なし／異常あり（無有）</option>
+        </select>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeOv('ovManageCheck')">閉じる</button>
+        <button class="btn-ok" onclick="saveCheckItem()">追加する</button>
+      </div>
+      <div class="note">作業場にない設備の項目は「非表示」にすると、記録画面から消えます。</div>
     </div>
   </div>
 
@@ -552,7 +676,17 @@
         });
         if (keep && (d.months || []).indexOf(keep) >= 0) ms.value = keep;
 
+        staff = d.staff || [];
+        checkItems = d.checkItems || [];
+        healths = d.healths || [];
+        checkDays = d.checkDays || [];
+
+        var cc = document.getElementById('cChecker');
+        if (!cc.value) cc.value = defaultChecker;
+
         renderKos();
+        renderHealthForm();
+        renderCheckForm();
         renderHistory();
       } catch (e) {
         document.getElementById('heroSub').textContent = 'データを取得できませんでした';
@@ -844,6 +978,412 @@
       } catch (e) { showToast('エラー: ' + e.message, true); }
     }
 
+    // ============================================================
+    //  記録の切り替え（温度／健康／点検）
+    // ============================================================
+    var recMode = '温度';
+    var staff = [], checkItems = [], healths = [], checkDays = [];
+    var symState = {}, wearState = {}, checkState = {};
+
+    /** チップ（ボタン群）を作る */
+    function buildChips(containerId, items, current, onPick) {
+      var c = document.getElementById(containerId);
+      c.innerHTML = '';
+      items.forEach(function (name) {
+        var b = document.createElement('button');
+        b.className = 'chip' + (name === current ? ' on' : '');
+        b.textContent = name;
+        b.type = 'button';
+        b.onclick = function () {
+          var all = c.querySelectorAll('.chip');
+          for (var i = 0; i < all.length; i++) all[i].classList.remove('on');
+          b.classList.add('on');
+          onPick(name);
+        };
+        c.appendChild(b);
+      });
+    }
+
+    function switchMode(m) {
+      recMode = m;
+      document.getElementById('secOndo').style.display   = (m === '温度') ? 'block' : 'none';
+      document.getElementById('secKenko').style.display  = (m === '健康') ? 'block' : 'none';
+      document.getElementById('secTenken').style.display = (m === '点検') ? 'block' : 'none';
+      window.scrollTo(0, 0);
+    }
+
+    // ============================================================
+    //  健康チェック
+    // ============================================================
+    var SYMPTOMS = ['発熱', '下痢', '嘔吐', '腹痛', '手指の傷・化膿', '同居家族の胃腸症状'];
+    var WEARS = ['作業着・帽子・長靴', '爪・装飾品'];
+
+    function renderHealthForm() {
+      var sel = document.getElementById('hName');
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">選択してください</option>';
+      staff.forEach(function (x) {
+        var o = document.createElement('option');
+        o.value = x.name; o.textContent = x.name;
+        sel.appendChild(o);
+      });
+      if (cur) sel.value = cur;
+      else if (staff.length === 1) sel.value = staff[0].name;
+
+      var sa = document.getElementById('symArea');
+      var h = '<div class="field-label" style="margin-bottom:8px;">体調（「有」があると就業不可になります）</div>';
+      SYMPTOMS.forEach(function (k, i) {
+        if (symState[k] === undefined) symState[k] = '無';
+        h += rowToggle('sym', i, k, '無', '有');
+      });
+      sa.innerHTML = h;
+
+      var wa = document.getElementById('wearArea');
+      var h2 = '<div class="field-label" style="margin:14px 0 8px;">身だしなみ</div>';
+      WEARS.forEach(function (k, i) {
+        if (wearState[k] === undefined) wearState[k] = '○';
+        h2 += rowToggle('wear', i, k, '○', '×');
+      });
+      wa.innerHTML = h2;
+
+      bindToggles();
+      updateHealthPreview();
+    }
+
+    function rowToggle(kind, i, label, okv, ngv) {
+      return '<div class="ko" id="' + kind + i + '" style="padding:10px 12px; margin-bottom:8px;">'
+           + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">'
+           + '<div style="font-size:14px; font-weight:600;">' + esc(label) + '</div>'
+           + '<div style="display:flex; gap:6px; flex-shrink:0;">'
+           + '<button class="chip tg" data-kind="' + kind + '" data-i="' + i + '" data-v="' + okv + '" style="padding:8px 14px;">' + okv + '</button>'
+           + '<button class="chip tg" data-kind="' + kind + '" data-i="' + i + '" data-v="' + ngv + '" style="padding:8px 14px;">' + ngv + '</button>'
+           + '</div></div></div>';
+    }
+
+    function bindToggles() {
+      document.querySelectorAll('.tg').forEach(function (b) {
+        b.onclick = function () {
+          var kind = b.dataset.kind, i = Number(b.dataset.i), v = b.dataset.v;
+          var key = (kind === 'sym') ? SYMPTOMS[i] : WEARS[i];
+          if (kind === 'sym') symState[key] = v; else wearState[key] = v;
+          paintToggles();
+          updateHealthPreview();
+        };
+      });
+      paintToggles();
+    }
+
+    function paintToggles() {
+      document.querySelectorAll('.tg').forEach(function (b) {
+        var kind = b.dataset.kind, i = Number(b.dataset.i), v = b.dataset.v;
+        var key = (kind === 'sym') ? SYMPTOMS[i] : WEARS[i];
+        var cur = (kind === 'sym') ? symState[key] : wearState[key];
+        b.classList.toggle('on', cur === v);
+        var isBad = (cur === '有' || cur === '×');
+        document.getElementById(kind + i).classList.toggle('ng', isBad);
+      });
+    }
+
+    function allHealthOk() {
+      SYMPTOMS.forEach(function (k) { symState[k] = '無'; });
+      WEARS.forEach(function (k) { wearState[k] = '○'; });
+      paintToggles();
+      updateHealthPreview();
+    }
+
+    function healthNg() {
+      return SYMPTOMS.some(function (k) { return symState[k] === '有'; });
+    }
+
+    function updateHealthPreview() {
+      var name = document.getElementById('hName').value;
+      var pv = document.getElementById('hPreview');
+      var b = document.getElementById('btnKenko');
+      var ng = healthNg();
+      document.getElementById('hActionField').style.display = ng ? 'block' : 'none';
+
+      if (!name) {
+        pv.textContent = '氏名を選んでください';
+        pv.className = 'preview empty'; b.disabled = true; return;
+      }
+      if (ng && document.getElementById('hAction').value.trim() === '') {
+        pv.innerHTML = '<span style="color:#c0392b;">就業不可です。とった対応を書いてください</span>';
+        pv.className = 'preview'; b.disabled = true; return;
+      }
+      pv.innerHTML = esc(name) + '　就業の可否：<span class="big">' + (ng ? '不可' : '可') + '</span>';
+      pv.className = 'preview'; b.disabled = false;
+    }
+
+    async function submitHealth() {
+      if (busy) return;
+      var name = document.getElementById('hName').value;
+      var date = document.getElementById('hDate').value;
+      if (!name || !date) return;
+
+      var dup = healths.filter(function (h) { return h.date === date && h.name === name; })[0];
+      if (dup) {
+        var ok = await askConfirm(
+          date + ' の ' + name + ' さんは、すでに記録があります。\n\n上書きしますか？',
+          '上書きする', '同じ日の記録があります');
+        if (!ok) return;
+      }
+
+      busy = true;
+      var b = document.getElementById('btnKenko');
+      b.disabled = true; b.textContent = '送信中...';
+      try {
+        await api({
+          action: 'writeHealth', date: date, name: name,
+          temp: document.getElementById('hTemp').value,
+          sym: JSON.stringify(symState),
+          wear: JSON.stringify(wearState),
+          judge: healthNg() ? '不可' : '可',
+          action: document.getElementById('hAction').value,
+          memo: document.getElementById('hMemo').value
+        });
+        showToast('✓ ' + name + ' さんの健康チェックを記録しました');
+        document.getElementById('hMemo').value = '';
+        document.getElementById('hAction').value = '';
+        await loadData();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+      b.textContent = '記録する';
+      busy = false;
+      updateHealthPreview();
+    }
+
+    function openAddStaff() {
+      document.getElementById('staffName').value = '';
+      var list = document.getElementById('staffList');
+      list.innerHTML = '';
+      staff.forEach(function (x) {
+        var li = document.createElement('li');
+        li.className = 'manage-item';
+        li.innerHTML = '<span style="font-size:15px;">' + esc(x.name) + '</span>';
+        var btn = document.createElement('button');
+        btn.className = 'hide-btn'; btn.textContent = '非表示'; btn.type = 'button';
+        btn.onclick = function () { hideStaff(x.name); };
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+      document.getElementById('ovAddStaff').classList.add('open');
+    }
+
+    async function saveStaff() {
+      var n = document.getElementById('staffName').value.trim();
+      if (!n) { showToast('氏名を入れてください'); return; }
+      try {
+        await api({ action: 'addStaff', name: n });
+        closeOv('ovAddStaff');
+        showToast('「' + n + '」を追加しました');
+        await loadData();
+        document.getElementById('hName').value = n;
+        updateHealthPreview();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+    }
+
+    async function hideStaff(n) {
+      var ok = await askConfirm('「' + n + '」を非表示にします。\n\n過去の記録は残ります。', '非表示にする', '従事者を非表示にする');
+      if (!ok) return;
+      try {
+        await api({ action: 'hideStaff', name: n });
+        closeOv('ovAddStaff');
+        showToast('「' + n + '」を非表示にしました');
+        await loadData();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+    }
+
+    // ============================================================
+    //  日常衛生点検
+    // ============================================================
+    function renderCheckForm() {
+      var area = document.getElementById('checkArea');
+      if (checkItems.length === 0) {
+        area.innerHTML = '<div class="msg">点検項目がありません</div>';
+        document.getElementById('btnTenken').disabled = true;
+        return;
+      }
+      var h = '';
+      checkItems.forEach(function (it, i) {
+        if (checkState[it.name] === undefined) checkState[it.name] = { r: '', v: '', a: '' };
+        var ok = (it.type === '無有') ? '無' : '○';
+        var ng = (it.type === '無有') ? '有' : '×';
+        h += '<div class="ko" id="ck' + i + '" style="padding:12px; margin-bottom:8px;">'
+           + '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">'
+           + '<div style="font-size:14px; font-weight:600; line-height:1.4;">' + esc(it.name) + '</div>'
+           + '<div style="display:flex; gap:6px; flex-shrink:0;">'
+           + '<button class="chip ckb" data-i="' + i + '" data-v="' + ok + '" style="padding:8px 14px;">' + ok + '</button>'
+           + '<button class="chip ckb" data-i="' + i + '" data-v="' + ng + '" style="padding:8px 14px;">' + ng + '</button>'
+           + '</div></div>';
+        if (it.numLabel) {
+          h += '<div style="display:flex; align-items:center; gap:8px; margin-top:10px;">'
+             + '<span style="font-size:12px; color:#666;">' + esc(it.numLabel) + '</span>'
+             + '<input type="number" class="inp cnum" data-i="' + i + '" step="0.1" inputmode="decimal"'
+             + ' style="font-size:16px; font-weight:700; text-align:right; padding:8px;" placeholder="—">'
+             + '</div>';
+        }
+        h += '<input type="text" class="inp cact" data-i="' + i + '" placeholder="とった対応"'
+           + ' maxlength="150" style="margin-top:10px; display:none;">'
+           + '</div>';
+      });
+      area.innerHTML = h;
+
+      document.querySelectorAll('.ckb').forEach(function (b) {
+        b.onclick = function () {
+          var i = Number(b.dataset.i);
+          checkState[checkItems[i].name].r = b.dataset.v;
+          paintCheck();
+          updateCheckPreview();
+        };
+      });
+      document.querySelectorAll('.cnum').forEach(function (inp) {
+        inp.oninput = function () { checkState[checkItems[Number(inp.dataset.i)].name].v = inp.value; };
+      });
+      document.querySelectorAll('.cact').forEach(function (inp) {
+        inp.oninput = function () {
+          checkState[checkItems[Number(inp.dataset.i)].name].a = inp.value;
+          updateCheckPreview();
+        };
+      });
+      paintCheck();
+      updateCheckPreview();
+    }
+
+    function paintCheck() {
+      document.querySelectorAll('.ckb').forEach(function (b) {
+        var i = Number(b.dataset.i);
+        var st = checkState[checkItems[i].name];
+        b.classList.toggle('on', st.r === b.dataset.v);
+      });
+      checkItems.forEach(function (it, i) {
+        var st = checkState[it.name];
+        var bad = (st.r === '×' || st.r === '有');
+        document.getElementById('ck' + i).classList.toggle('ng', bad);
+        var act = document.querySelector('.cact[data-i="' + i + '"]');
+        if (act) act.style.display = bad ? 'block' : 'none';
+      });
+    }
+
+    function allCheckOk() {
+      checkItems.forEach(function (it) {
+        checkState[it.name] = checkState[it.name] || { r: '', v: '', a: '' };
+        checkState[it.name].r = (it.type === '無有') ? '無' : '○';
+      });
+      paintCheck();
+      updateCheckPreview();
+    }
+
+    function updateCheckPreview() {
+      var done = 0, ng = 0, needAction = 0;
+      checkItems.forEach(function (it) {
+        var st = checkState[it.name];
+        if (!st || !st.r) return;
+        done++;
+        if (st.r === '×' || st.r === '有') {
+          ng++;
+          if (!st.a || st.a.trim() === '') needAction++;
+        }
+      });
+      var pv = document.getElementById('cPreview');
+      var b = document.getElementById('btnTenken');
+
+      if (done === 0) {
+        pv.textContent = '「すべて異常なし」を押すか、項目をタップしてください';
+        pv.className = 'preview empty'; b.disabled = true;
+        b.textContent = '記録する'; return;
+      }
+      if (done < checkItems.length) {
+        pv.innerHTML = done + ' / ' + checkItems.length + ' 項目　'
+                     + '<span style="font-size:12px; color:#c0392b;">未入力が ' + (checkItems.length - done) + ' 件あります</span>';
+        pv.className = 'preview'; b.disabled = true;
+        b.textContent = 'すべての項目を入力してください'; return;
+      }
+      if (needAction > 0) {
+        pv.innerHTML = '<span style="color:#c0392b;">異常 ' + ng + ' 件。対応を書いてください</span>';
+        pv.className = 'preview'; b.disabled = true;
+        b.textContent = '対応を書いてください'; return;
+      }
+      pv.innerHTML = checkItems.length + ' 項目　'
+                   + (ng > 0 ? '<span style="color:#c0392b;">異常 ' + ng + ' 件</span>' : '<span class="big">異常なし</span>');
+      pv.className = 'preview'; b.disabled = false;
+      b.textContent = '記録する';
+    }
+
+    async function submitCheck() {
+      if (busy) return;
+      var date = document.getElementById('cDate').value;
+      if (!date) return;
+
+      var dup = checkDays.filter(function (c) { return c.date === date; })[0];
+      if (dup) {
+        var ok = await askConfirm(date + ' はすでに点検の記録があります。\n\n入れ替えますか？',
+                                  '入れ替える', '同じ日の記録があります');
+        if (!ok) return;
+      }
+
+      var lines = checkItems.map(function (it) {
+        var st = checkState[it.name];
+        return { item: it.name, result: st.r, value: st.v, action: st.a };
+      });
+
+      busy = true;
+      var b = document.getElementById('btnTenken');
+      b.disabled = true; b.textContent = '送信中...';
+      try {
+        var d = await api({
+          action: 'writeCheck', date: date,
+          checker: document.getElementById('cChecker').value.trim(),
+          items: JSON.stringify(lines)
+        });
+        showToast(d.ng > 0 ? '記録しました（異常 ' + d.ng + ' 件）' : '✓ 点検を記録しました（異常なし）', d.ng > 0);
+        checkState = {};
+        renderCheckForm();
+        await loadData();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+      busy = false;
+    }
+
+    function openManageCheck() {
+      var list = document.getElementById('checkMngList');
+      list.innerHTML = '';
+      checkItems.forEach(function (it) {
+        var li = document.createElement('li');
+        li.className = 'manage-item';
+        li.innerHTML = '<div><div style="font-size:14px; font-weight:600;">' + esc(it.name) + '</div>'
+                     + '<div style="font-size:11px; color:#999;">' + esc(it.type)
+                     + (it.numLabel ? '　' + esc(it.numLabel) : '') + '</div></div>';
+        var btn = document.createElement('button');
+        btn.className = 'hide-btn'; btn.textContent = '非表示'; btn.type = 'button';
+        btn.onclick = function () { hideCheckItem(it.name); };
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+      document.getElementById('newCheckName').value = '';
+      document.getElementById('ovManageCheck').classList.add('open');
+    }
+
+    async function saveCheckItem() {
+      var n = document.getElementById('newCheckName').value.trim();
+      if (!n) { showToast('項目名を入れてください'); return; }
+      try {
+        await api({ action: 'addCheckItem', name: n, type: document.getElementById('newCheckType').value });
+        closeOv('ovManageCheck');
+        showToast('「' + n + '」を追加しました');
+        await loadData();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+    }
+
+    async function hideCheckItem(n) {
+      var ok = await askConfirm('「' + n + '」を記録画面から消します。\n\n過去の記録は残ります。', '非表示にする', '点検項目を非表示にする');
+      if (!ok) return;
+      try {
+        await api({ action: 'hideCheckItem', name: n });
+        closeOv('ovManageCheck');
+        showToast('「' + n + '」を非表示にしました');
+        delete checkState[n];
+        await loadData();
+      } catch (e) { showToast('エラー: ' + e.message, true); }
+    }
+
     // ---------- 月次 ----------
     async function loadMonthly() {
       var month = document.getElementById('fMonth').value;
@@ -940,6 +1480,12 @@
         };
         c.appendChild(b);
       });
+
+      document.getElementById('hDate').value = todayISO();
+      document.getElementById('cDate').value = todayISO();
+      document.getElementById('hName').addEventListener('change', updateHealthPreview);
+
+      buildChips('modeChips', ['温度', '健康', '点検'], recMode, switchMode);
 
       document.getElementById('setupInput').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') saveSetupUrl();
